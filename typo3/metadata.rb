@@ -1,6 +1,6 @@
 name             "typo3"
 maintainer       "dkd Internet Service GmbH"
-maintainer_email "christian.trabold@dkd.de"
+maintainer_email "opensource@dkd.de"
 license          "Apache 2.0"
 description      "Installs/Configures typo3"
 long_description IO.read(File.join(File.dirname(__FILE__), 'README.md'))
