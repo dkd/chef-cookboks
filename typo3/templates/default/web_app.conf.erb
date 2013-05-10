@@ -1,0 +1,94 @@
+<VirtualHost *:80>
+  ServerName <%= @params[:server_name] %>
+  ServerAlias <% @params[:server_aliases].each do |a| %><%= "#{a}" %> <% end %>
+  DocumentRoot <%= @params[:docroot] %>
+  RewriteEngine On
+
+  # cb 2011-03-22  AllowOveride von None auf All
+  <Directory <%= @params[:docroot] %>>
+    Options FollowSymLinks
+    AllowOverride All
+    Order allow,deny
+    Allow from all
+  </Directory>
+
+  <Directory />
+    Options FollowSymLinks
+    AllowOverride None
+  </Directory>
+
+  LogLevel info
+  ErrorLog <%= node[:apache][:log_dir] %>/<%= @params[:name] %>-error.log
+  CustomLog <%= node[:apache][:log_dir] %>/<%= @params[:name] %>-access.log combined
+
+  RewriteEngine On
+  RewriteLog <%= node[:apache][:log_dir] %>/<%= @application_name %>-rewrite.log
+  RewriteLogLevel 0
+
+  <% if node[:apache][:enable_canonical_host] -%>
+  # Canonical host, <%= @params[:server_name] %>
+  RewriteCond %{HTTP_HOST}   !^<%= @params[:server_name] %> [NC]
+  RewriteCond %{HTTP_HOST}   !^$
+  RewriteRule ^/(.*)$        http://<%= @params[:server_name] %>/$1 [L,R=301]
+  <% end %>
+
+  <% node[:apache][:additional_includes].each do |file| %>
+  <%= "Include conf/#{file}" %>
+  <% end %>
+
+  RewriteCond %{DOCUMENT_ROOT}/system/maintenance.html -f
+  RewriteCond %{SCRIPT_FILENAME} !maintenance.html
+  RewriteRule ^.*$ /system/maintenance.html [L]
+</VirtualHost>
+
+<% if node[:apache][:listen_ports].include?("443") %>
+
+# Enable SSL
+<VirtualHost *:443>
+  ServerName <%= @params[:server_name] %>
+  # ServerAlias here is not going to work without giving warnings to the user
+  # That's why we disable server_aliases here
+  # @see http://rimuhosting.com/howto/modssl.jsp
+  #  ServerAlias <% @params[:server_aliases].each do |a| %><%= "#{a}" %> <% end %>
+  DocumentRoot <%= @params[:docroot] %>
+
+  Include "ssl.conf"
+
+  RewriteEngine On
+
+  <Directory <%= @params[:docroot] %>>
+    Options FollowSymLinks
+    AllowOverride All
+    Order allow,deny
+    Allow from all
+  </Directory>
+
+  <Directory />
+    Options FollowSymLinks
+    AllowOverride None
+  </Directory>
+
+  LogLevel info
+  ErrorLog <%= node[:apache][:log_dir] %>/<%= @params[:name] %>-ssl-error.log
+  CustomLog <%= node[:apache][:log_dir] %>/<%= @params[:name] %>-ssl-access.log combined
+
+  RewriteEngine On
+  RewriteLog <%= node[:apache][:log_dir] %>/<%= @application_name %>-ssl-rewrite.log
+  RewriteLogLevel 0
+
+  <% if node[:apache][:enable_canonical_host] -%>
+  # Canonical host, <%= @params[:server_name] %>
+  RewriteCond %{HTTP_HOST}   !^<%= @params[:server_name] %> [NC]
+  RewriteCond %{HTTP_HOST}   !^$
+  RewriteRule ^/(.*)$        https://<%= @params[:server_name] %>/$1 [L,R=301]
+  <% end %>
+
+  <% node[:apache][:additional_includes].each do |file| %>
+  <%= "Include conf/#{file}" %>
+  <% end %>
+
+  RewriteCond %{DOCUMENT_ROOT}/system/maintenance.html -f
+  RewriteCond %{SCRIPT_FILENAME} !maintenance.html
+  RewriteRule ^.*$ /system/maintenance.html [L]
+</VirtualHost>
+<% end %>
